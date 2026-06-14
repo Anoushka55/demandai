@@ -7,7 +7,9 @@ import { AgentInsightCard } from "@/components/AgentInsightCard";
 import { useOverrides, getEffectiveStatus } from "@/lib/overrideContext";
 import { useDataContext } from "@/lib/dataContext";
 import { formatINR } from "@/lib/utils";
-import { FileText, TrendingDown, TrendingUp, CheckCircle2, Send, ArrowRight } from "lucide-react";
+import { FileText, TrendingDown, TrendingUp, CheckCircle2, Send, ArrowRight, GitMerge } from "lucide-react";
+import Link from "next/link";
+import { consensusAdjustedCount } from "@/lib/forecastCollabData";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const RC_COLORS: Record<string, string> = {
@@ -106,6 +108,22 @@ export default function GovernancePage() {
           </div>
 
           <div className="px-8 py-6 space-y-8">
+            {/* Consensus Forecast notice */}
+            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-teal/5 border border-teal/20 text-xs text-navy">
+              <GitMerge size={14} className="text-teal flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Consensus forecast incorporated.</strong>{" "}
+                Brand owners submitted adjustments for {consensusAdjustedCount} SKUs vs. the
+                statistical baseline — these figures have been carried into this pre-read.{" "}
+                <Link
+                  href="/forecast-collaboration"
+                  className="text-teal underline underline-offset-2 hover:opacity-80"
+                >
+                  View Forecast Collaboration →
+                </Link>
+              </span>
+            </div>
+
             {/* KPI Summary */}
             <section>
               <SectionHeading num="1" title="KPI Summary" />

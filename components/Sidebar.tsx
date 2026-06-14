@@ -2,10 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, Activity, Zap, AlertTriangle, RefreshCw, FileText, Sparkles, Cpu } from "lucide-react";
+import { Home, Activity, Zap, AlertTriangle, RefreshCw, FileText, Sparkles, Cpu, Users, ListChecks } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
+  { href: "/forecast-collaboration", label: "Forecast Collaboration", icon: Users },
+  { href: "/agent-tracker", label: "Agent Tracker", icon: ListChecks },
   { href: "/data-health", label: "Data Health", icon: Activity },
   { href: "/kpi-demand-sensing", label: "KPI & Demand Sensing", icon: Zap },
   { href: "/exceptions", label: "Exception Report", icon: AlertTriangle },
