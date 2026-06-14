@@ -4,19 +4,100 @@ import { useRouter } from "next/navigation";
 import {
   Network, X, Brain, Activity, RefreshCw,
   Sparkles, FileText, MessageSquare, AlertTriangle,
+  Database, Package, Calendar, Truck,
 } from "lucide-react";
 
 const TOTAL_STAGES = 5;
+const CORAL = "#E0355C";
+const TEAL  = "#17A2A0";
+const NAVY  = "#2A2755";
 
-function reveal(visible: boolean, delay = 0): React.CSSProperties {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AM = (props: any) => <animateMotion {...props} />;
+
+function Dot({ d, dur, begin, color }: { d: string; dur: string; begin: string; color: string }) {
+  return (
+    <circle r="0.5" fill={color} fillOpacity="0.95">
+      <AM dur={dur} repeatCount="indefinite" begin={begin} path={d} />
+    </circle>
+  );
+}
+
+function reveal(on: boolean, delay = 0): React.CSSProperties {
   return {
-    opacity: visible ? 1 : 0,
-    transform: visible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.97)",
-    transition: "opacity 0.5s ease, transform 0.5s ease",
-    transitionDelay: visible ? `${delay}ms` : "0ms",
-    pointerEvents: visible ? "auto" : "none",
+    opacity: on ? 1 : 0,
+    transform: on ? "translateY(0px)" : "translateY(8px)",
+    transition: "opacity 0.45s ease, transform 0.45s ease",
+    transitionDelay: on ? `${delay}ms` : "0ms",
+    pointerEvents: on ? "auto" : "none",
   };
 }
+
+const INPUTS = [
+  { Icon: Database, label: "ERP (Sales)",      desc: "Transactional demand"   },
+  { Icon: Package,  label: "WMS (Inventory)",  desc: "Stock & warehouse data" },
+  { Icon: Calendar, label: "Promo Calendar",   desc: "Promotional events"     },
+  { Icon: Truck,    label: "Logistics Master", desc: "Lead times & routes"    },
+];
+
+const AGENTS = [
+  { num: 1, Icon: Activity,  core: false, title: "Health Check Agent", sub: "Anomaly detection · data reconciliation" },
+  { num: 2, Icon: Brain,     core: true,  title: "DemandIQ Agent",     sub: "FA% / Bias% · confidence scoring"        },
+  { num: 3, Icon: RefreshCw, core: false, title: "Supply Agent",       sub: "Coverage-risk · reallocation logic"      },
+];
+
+const OUTPUTS = [
+  { Icon: AlertTriangle,  title: "Exception Report",        desc: "Ranked issues with reasoning"  },
+  { Icon: RefreshCw,      title: "Coverage & Reallocation", desc: "Reallocation suggestions"      },
+  { Icon: FileText,       title: "Governance Pre-Read",     desc: "Auto-compiled S&OP summary"    },
+  { Icon: MessageSquare,  title: "AI Assistant",            desc: "Conversational Q&A"            },
+  { Icon: Sparkles,       title: "Insight Cards",           desc: "Per-page agent commentary"     },
+];
+
+// ─── SVG coordinate map (viewBox 0 0 100 100 = % of canvas) ─────────────────
+//
+//  Derived from justify-around math with card heights:
+//  Input/Output cards: ~6.5 units tall   Agent cards: ~7.7 units tall
+//
+//  Left col  (left:2% w:24%) right edge x=26
+//    4 inputs  → centers y ≈ 21, 43, 65, 87
+//
+//  Mid col   (left:30% right:30%) x span 30–70
+//    Orch header y 10–21 (h≈11)  bottom y≈21
+//    3 agents in flex-1 (y 22.5–98) → centers y ≈ 36, 61, 86
+//
+//  Right col (right:2% w:24%) left edge x=74
+//    5 outputs → centers y ≈ 19, 36, 54, 72, 89
+
+// Input card right-edge → Agent left-edge (x: 26→30)
+const INPUT_PATHS = [
+  "M 26 21 C 28 21 28 36 30 36",
+  "M 26 43 C 28 43 28 61 30 61",
+  "M 26 65 C 28 65 28 61 30 61",
+  "M 26 87 C 28 87 28 86 30 86",
+];
+
+// Spine through center of middle col: orch dispatches ↓ (navy), agents reply ↑ (teal)
+const SPINE_DOWN = "M 50 21 L 50 86";
+const SPINE_UP   = "M 50 86 L 50 21";
+
+// Agent right-edge → Output left-edge (x: 70→74)
+const OUTPUT_PATHS = [
+  "M 70 36 C 72 36 72 19 74 19",
+  "M 70 61 C 72 61 72 36 74 36",
+  "M 70 61 C 72 61 72 54 74 54",
+  "M 70 86 C 72 86 72 72 74 72",
+  "M 70 86 C 72 86 72 89 74 89",
+];
+
+// Stage-5 feedback: outputs send decisions back to agents (reversed bezier)
+const FEEDBACK_PATHS = [
+  "M 74 19 C 72 19 72 36 70 36",
+  "M 74 36 C 72 36 72 61 70 61",
+  "M 74 54 C 72 54 72 61 70 61",
+  "M 74 72 C 72 72 72 86 70 86",
+  "M 74 89 C 72 89 72 86 70 86",
+];
 
 export default function ArchitecturePage() {
   const router = useRouter();
@@ -32,7 +113,7 @@ export default function ArchitecturePage() {
     const handler = (e: KeyboardEvent) => {
       if (e.key === " " || e.code === "Space") {
         e.preventDefault();
-        setStage((s) => (s >= TOTAL_STAGES ? 0 : s + 1));
+        setStage(n => n >= TOTAL_STAGES ? 0 : n + 1);
       }
       if (e.key === "Escape") router.push("/");
     };
@@ -43,10 +124,11 @@ export default function ArchitecturePage() {
   const s = (n: number) => stage >= n;
 
   return (
-    <div className="fixed inset-0 z-50 bg-cream flex flex-col overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden select-none"
+         style={{ background: "#F5EFE3" }}>
 
-      {/* ── Top Bar ── */}
-      <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-[#E7DDCB] bg-white/70 backdrop-blur-md z-20">
+      {/* ── Top bar ── */}
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-[#E7DDCB] bg-white/70 backdrop-blur-md z-30">
         <div className="flex items-center gap-2">
           <Network size={14} className="text-coral" />
           <span className="text-[10px] uppercase tracking-widest text-coral font-bold">DemandIQ · AI Architecture</span>
@@ -58,226 +140,262 @@ export default function ArchitecturePage() {
             }`} />
           ))}
         </div>
-        <button onClick={() => router.push("/")} className="flex items-center gap-1.5 text-xs text-muted hover:text-navy transition-colors">
+        <button onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 text-xs text-muted hover:text-navy transition-colors">
           <X size={13} /> Exit
         </button>
       </header>
 
       {/* ── Canvas ── */}
-      <div className="flex-1 relative p-3 overflow-hidden">
+      <div className="flex-1 relative overflow-hidden">
 
-        {/* SVG arrow overlay */}
-        <ArrowLayer stage={stage} />
-
-        {/* Stage 0 — empty canvas */}
-        <div
-          className="absolute inset-0 flex items-center justify-center z-10"
-          style={{ opacity: stage === 0 ? 1 : 0, transition: "opacity 0.6s ease", pointerEvents: stage === 0 ? "auto" : "none" }}
-        >
+        {/* Stage-0 prompt */}
+        <div className="absolute inset-0 flex items-center justify-center z-10"
+             style={{ opacity: stage === 0 ? 1 : 0, transition: "opacity 0.5s ease",
+                      pointerEvents: stage === 0 ? "auto" : "none" }}>
           <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-navy/25 animate-pulse">
             Press SPACE to begin
           </span>
         </div>
 
-        {/* Content — flex column */}
-        <div className="relative z-10 h-full flex flex-col gap-2">
+        {/* ── SVG at z-[5] — sits BEHIND cards so lines go under them naturally ── */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none"
+             style={{ zIndex: 5 }}
+             viewBox="0 0 100 100" preserveAspectRatio="none">
 
-          {/* ROW 1 — Data Sources (h-14 = 56px) */}
-          <div className="flex-shrink-0 h-14 flex items-center gap-2">
-            {[
-              { icon: "🧾", label: "ERP / Sales", sub: "Sell-in, sell-through" },
-              { icon: "📦", label: "WMS / Inventory", sub: "Stock, lead time" },
-              { icon: "🗓️", label: "Promo Calendar", sub: "Promo dates & lift" },
-              { icon: "🚚", label: "Logistics Master", sub: "Depots & routes" },
-            ].map((src, i) => (
-              <div
-                key={src.label}
-                title={src.sub}
-                style={reveal(s(1), i * 70)}
-                className="flex-1 flex items-center gap-2 bg-white border border-[#E7DDCB] rounded-lg px-3 py-2 shadow-sm h-full"
-              >
-                <span className="text-xl leading-none">{src.icon}</span>
-                <div>
-                  <div className="text-[11px] font-bold text-navy">{src.label}</div>
-                  <div className="text-[8px] text-muted font-mono uppercase tracking-wider">Data Source</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Input → Agent connection lines + dots (stage 4) */}
+          {INPUT_PATHS.map((d, i) => (
+            <g key={`ip${i}`} style={{
+              opacity: s(4) ? 1 : 0,
+              transition: s(4) ? `opacity 0.4s ease ${i * 60}ms` : "opacity 0.15s ease",
+            }}>
+              <path d={d} fill="none" stroke={CORAL} strokeWidth="0.22" strokeOpacity="0.3" />
+              <Dot d={d} dur="1.5s" begin="0s"    color={CORAL} />
+              <Dot d={d} dur="1.5s" begin="-0.75s" color={CORAL} />
+            </g>
+          ))}
 
-          {/* ROW 2 — Agents (flex-1, fills remaining space) */}
-          <div className="flex-1 min-h-0 flex gap-3 items-stretch">
+          {/* Orchestration spine: navy ↓ (dispatch) + teal ↑ (results) — stage 3 */}
+          <g style={{
+            opacity: s(3) ? 1 : 0,
+            transition: s(3) ? "opacity 0.6s ease 500ms" : "opacity 0.15s ease",
+          }}>
+            <path d={SPINE_DOWN} fill="none" stroke={NAVY} strokeWidth="0.2"
+                  strokeOpacity="0.18" strokeDasharray="1.2 1.2" />
+            <Dot d={SPINE_DOWN} dur="2.6s" begin="0s"     color={NAVY} />
+            <Dot d={SPINE_DOWN} dur="2.6s" begin="-1.3s"  color={NAVY} />
+            <Dot d={SPINE_UP}   dur="2.6s" begin="-0.65s" color={TEAL} />
+            <Dot d={SPINE_UP}   dur="2.6s" begin="-1.95s" color={TEAL} />
+          </g>
 
-            {/* Health Check */}
-            <div className="flex-1" style={reveal(s(2), 0)}>
-              <div className="bg-white border border-coral/25 rounded-xl p-3 h-full flex flex-col">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="text-[11px] font-extrabold text-navy">Health Check Agent</div>
-                    <div className="text-[9px] text-muted mt-0.5">Watches the data layer</div>
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-coral/10 flex items-center justify-center flex-shrink-0 ml-1">
-                    <Activity size={14} className="text-coral" />
-                  </div>
-                </div>
-                <ul className="space-y-1.5 flex-1">
-                  {[
-                    "Anomaly detection (IQR) on incoming records",
-                    "Auto-reconciliation vs master data",
-                    "Quality threshold alerts & escalation",
-                  ].map((b) => (
-                    <li key={b} className="flex items-start gap-1.5 text-[10px] text-navy/80 leading-snug">
-                      <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0 mt-0.5" />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 text-[8px] font-mono text-muted bg-cream rounded px-1.5 py-0.5">→ Data Health</div>
-              </div>
-            </div>
+          {/* Agent → Output connection lines + dots (stage 4) */}
+          {OUTPUT_PATHS.map((d, i) => (
+            <g key={`op${i}`} style={{
+              opacity: s(4) ? 1 : 0,
+              transition: s(4) ? `opacity 0.4s ease ${i * 70}ms` : "opacity 0.15s ease",
+            }}>
+              <path d={d} fill="none" stroke={CORAL} strokeWidth="0.22" strokeOpacity="0.3" />
+              <Dot d={d} dur="1.3s" begin="0s"    color={CORAL} />
+              <Dot d={d} dur="1.3s" begin="-0.65s" color={CORAL} />
+            </g>
+          ))}
 
-            {/* DemandIQ — core, wider */}
-            <div style={{ flex: "1.5", ...reveal(s(2), 120) }}>
-              <div className="bg-white border-2 border-coral rounded-xl p-3.5 h-full flex flex-col relative shadow-[0_4px_20px_rgba(224,53,92,0.13)]">
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-navy text-white text-[8px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded font-mono whitespace-nowrap">
-                  Core Reasoning
-                </span>
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="text-sm font-extrabold text-navy">DemandIQ Agent</div>
-                    <div className="text-[9px] text-muted mt-0.5">Demand & forecast reasoning</div>
-                  </div>
-                  <div className="w-8 h-8 rounded-lg bg-navy flex items-center justify-center flex-shrink-0 ml-2">
-                    <Brain size={16} className="text-white" />
-                  </div>
-                </div>
-                <ul className="space-y-1.5 flex-1">
-                  {[
-                    { t: "FA% / Bias% computation + breach detection", live: true },
-                    { t: "Root-cause classifier (5 categories)", live: true },
-                    { t: "Confidence score from validation history", live: true },
-                    { t: "₹ impact narrative (LLM slot reserved)", live: false },
-                  ].map((c) => (
-                    <li key={c.t} className="flex items-start gap-1.5 text-[10px] text-navy/80 leading-snug">
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5 ${c.live ? "bg-coral" : "border border-coral bg-transparent"}`} />
-                      {c.t}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 text-[8px] font-mono text-muted bg-cream rounded px-1.5 py-0.5">→ KPI Sensing · Exceptions</div>
-              </div>
-            </div>
+          {/* Feedback loop — teal dots flowing backward outputs→agents (stage 5) */}
+          {FEEDBACK_PATHS.map((d, i) => (
+            <g key={`fb${i}`} style={{
+              opacity: s(5) ? 1 : 0,
+              transition: s(5) ? `opacity 0.4s ease ${i * 60}ms` : "opacity 0.15s ease",
+            }}>
+              <Dot d={d} dur="1.8s" begin={`-${(i * 0.36).toFixed(2)}s`} color={TEAL} />
+            </g>
+          ))}
+        </svg>
 
-            {/* Supply */}
-            <div className="flex-1" style={reveal(s(2), 240)}>
-              <div className="bg-white border border-coral/25 rounded-xl p-3 h-full flex flex-col">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="text-[11px] font-extrabold text-navy">Supply Agent</div>
-                    <div className="text-[9px] text-muted mt-0.5">Stock coverage reasoning</div>
+        {/* ── LEFT — Input source cards (stage 1) ── */}
+        <div className="absolute z-10 flex flex-col justify-around"
+             style={{ left: "2%", width: "24%", top: "10%", bottom: "2%" }}>
+          {INPUTS.map((inp, i) => {
+            const Icon = inp.Icon;
+            return (
+              <div key={inp.label} style={reveal(s(1), i * 80)}>
+                <div className="bg-white border border-[#EAE1D0] rounded-2xl flex items-center gap-2.5 px-3 py-2.5"
+                     style={{ boxShadow: "0 2px 14px rgba(42,39,85,0.07), 0 1px 3px rgba(42,39,85,0.05)" }}>
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                       style={{ background: "rgba(224,53,92,0.09)" }}>
+                    <Icon size={13} className="text-coral" />
                   </div>
-                  <div className="w-7 h-7 rounded-lg bg-coral/10 flex items-center justify-center flex-shrink-0 ml-1">
-                    <RefreshCw size={14} className="text-coral" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold text-navy leading-tight">{inp.label}</div>
+                    <div className="text-[8px] leading-tight mt-0.5" style={{ color: "rgba(42,39,85,0.45)" }}>{inp.desc}</div>
+                  </div>
+                  <div className="text-[7px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded-lg"
+                       style={{ color: TEAL, background: "rgba(23,162,160,0.09)",
+                                border: "1px solid rgba(23,162,160,0.22)" }}>
+                    IN
                   </div>
                 </div>
-                <ul className="space-y-1.5 flex-1">
-                  {[
-                    "Coverage-risk scoring (stock vs lead time)",
-                    "Reallocation / expedite recommendations",
-                    "Learns structurally risky depot-SKU pairs",
-                  ].map((b) => (
-                    <li key={b} className="flex items-start gap-1.5 text-[10px] text-navy/80 leading-snug">
-                      <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0 mt-0.5" />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 text-[8px] font-mono text-muted bg-cream rounded px-1.5 py-0.5">→ Coverage & Reallocation</div>
               </div>
-            </div>
-          </div>
+            );
+          })}
+        </div>
 
-          {/* ROW 3 — Decision Engine (h-20 = 80px) */}
-          <div className="flex-shrink-0 h-20" style={reveal(s(4))}>
-            <div className="bg-navy text-white rounded-xl px-5 py-2.5 h-full flex items-center gap-5">
-              <div className="flex-1 min-w-0">
-                <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold mb-0.5">Layer 3 · Decision Engine</div>
-                <div className="text-[12px] font-bold">Auto-routed by impact × confidence</div>
-                <div className="text-[10px] text-white/55 mt-0.5">Every output → a tier: Auto-Close / L1 / L2 / Director</div>
-              </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <div className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-2">
-                  <div className="text-[9px] font-bold text-coral mb-0.5">🤖 Autonomous</div>
-                  <div className="text-[8px] text-white/55 whitespace-nowrap">Auto-close · promo adjust</div>
+        {/* ── MIDDLE — Orchestration header + Agent cards (stages 2 & 3) ── */}
+        <div className="absolute z-10 flex flex-col gap-2.5"
+             style={{ left: "30%", right: "30%", top: "10%", bottom: "2%" }}>
+
+          {/* Orchestration / Decision Engine (stage 2) */}
+          <div style={reveal(s(2))}>
+            <div className="text-white rounded-2xl px-4 py-3.5 flex items-start justify-between"
+                 style={{
+                   background: "linear-gradient(135deg, #2A2755 0%, #1E1B4B 100%)",
+                   boxShadow: "0 8px 32px rgba(42,39,85,0.45), 0 0 0 1px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.1)",
+                 }}>
+              <div>
+                <div className="text-[7px] uppercase tracking-[0.22em] font-bold mb-1.5"
+                     style={{ color: "rgba(255,255,255,0.28)" }}>Orchestration Layer</div>
+                <div className="text-[15px] font-extrabold leading-tight tracking-tight">Decision Engine</div>
+                <div className="text-[8px] mt-1 leading-relaxed"
+                     style={{ color: "rgba(255,255,255,0.36)" }}>
+                  Auto-routed · impact × urgency × confidence
                 </div>
-                <div className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-2">
-                  <div className="text-[9px] font-bold text-[#2F6FED] mb-0.5">🧑‍💼 Human Approval</div>
-                  <div className="text-[8px] text-white/55 whitespace-nowrap">L2 / Director · novel cases</div>
+              </div>
+              <div className="flex flex-col gap-1.5 items-end flex-shrink-0 ml-4 mt-0.5">
+                <div className="text-[7px] font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
+                     style={{ color: "#FF8FAB", background: "rgba(224,53,92,0.18)",
+                              border: "1px solid rgba(224,53,92,0.32)" }}>
+                  🤖 Autonomous
+                </div>
+                <div className="text-[7px] font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
+                     style={{ color: "#93C5FD", background: "rgba(59,130,246,0.15)",
+                              border: "1px solid rgba(59,130,246,0.28)" }}>
+                  🧑‍💼 Human Approval
+                </div>
+                <div className="text-[6px] font-mono mt-0.5 text-right"
+                     style={{ color: "rgba(255,255,255,0.16)" }}>
+                  Auto · L1 · L2 · Director
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ROW 4 — Outputs (h-12 = 48px) */}
-          <div className="flex-shrink-0 h-12 flex gap-2">
-            {[
-              { icon: <AlertTriangle size={11} />, label: "Exceptions" },
-              { icon: <RefreshCw size={11} />, label: "Coverage" },
-              { icon: <FileText size={11} />, label: "Governance" },
-              { icon: <MessageSquare size={11} />, label: "AI Assistant" },
-              { icon: <Sparkles size={11} />, label: "Insights" },
-            ].map((o, i) => (
-              <div
-                key={o.label}
-                style={reveal(s(5), i * 55)}
-                className="flex-1 flex flex-col items-center justify-center bg-white border border-[#E7DDCB] rounded-lg px-2 py-1"
-              >
-                <div className="text-coral mb-0.5">{o.icon}</div>
-                <div className="text-[9px] font-bold text-navy leading-none">{o.label}</div>
-                <div className="text-[7px] font-mono text-coral bg-coral/10 rounded px-1 mt-0.5">AGENT</div>
-              </div>
-            ))}
-          </div>
+          {/* Agent cards (stage 3) */}
+          <div className="flex-1 flex flex-col justify-around">
+            {AGENTS.map((agent, i) => {
+              const Icon = agent.Icon;
+              return (
+                <div key={agent.num} style={reveal(s(3), i * 140)}>
+                  <div className="relative rounded-2xl px-3.5 py-3 flex items-center gap-3"
+                       style={agent.core ? {
+                         background: "#ffffff",
+                         border: "2px solid rgba(224,53,92,0.7)",
+                         boxShadow: "0 4px 28px rgba(224,53,92,0.2), 0 0 0 4px rgba(224,53,92,0.06), 0 1px 4px rgba(42,39,85,0.06)",
+                       } : {
+                         background: "#ffffff",
+                         border: "1px solid #EAE1D0",
+                         boxShadow: "0 2px 14px rgba(42,39,85,0.07), 0 1px 3px rgba(42,39,85,0.04)",
+                       }}>
+                    {/* Number badge */}
+                    <span className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center z-10"
+                          style={{ background: CORAL, boxShadow: "0 2px 8px rgba(224,53,92,0.4)" }}>
+                      {agent.num}
+                    </span>
 
-          {/* ROW 5 — Learning loop label (h-8 = 32px) */}
-          <div className="flex-shrink-0 h-8 flex items-center justify-center gap-2" style={reveal(s(5), 320)}>
-            <div className="relative flex-shrink-0">
-              <div className="w-5 h-5 rounded-full bg-teal text-white flex items-center justify-center">
-                <RefreshCw size={11} className="animate-spin" style={{ animationDuration: "3s" }} />
-              </div>
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-coral animate-ping" />
-            </div>
-            <span className="text-[9px] font-mono uppercase tracking-widest text-teal font-bold">
-              Continuous Learning Loop — decisions feed back into agents
-            </span>
+                    <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                         style={agent.core ? {
+                           background: NAVY,
+                           boxShadow: "0 2px 8px rgba(42,39,85,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
+                         } : {
+                           background: "rgba(224,53,92,0.09)",
+                         }}>
+                      <Icon size={16} color={agent.core ? "#ffffff" : CORAL} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-extrabold text-navy leading-tight">{agent.title}</div>
+                      <div className="text-[8.5px] mt-0.5 leading-snug"
+                           style={{ color: "rgba(42,39,85,0.48)" }}>{agent.sub}</div>
+                    </div>
+
+                    {/* Status pulse */}
+                    <div className="flex-shrink-0 w-2 h-2 rounded-full"
+                         style={agent.core ? {
+                           background: CORAL,
+                           boxShadow: `0 0 0 3px rgba(224,53,92,0.18)`,
+                           animation: "pulse 2s infinite",
+                         } : {
+                           background: "rgba(42,39,85,0.15)",
+                         }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* "Agents share signals" floating label — only stage 3 */}
-        <div
-          className="absolute z-20 pointer-events-none"
-          style={{
-            top: "62%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            opacity: stage === 3 ? 1 : 0,
-            transition: "opacity 0.4s ease",
-          }}
-        >
-          <span className="text-[8px] font-mono text-coral/70 uppercase tracking-widest bg-cream/95 px-2 py-0.5 rounded border border-coral/20 whitespace-nowrap">
-            agents share signals
-          </span>
+        {/* ── RIGHT — Output cards (stage 4) ── */}
+        <div className="absolute z-10 flex flex-col justify-around"
+             style={{ right: "2%", width: "24%", top: "10%", bottom: "2%" }}>
+          {OUTPUTS.map((out, i) => {
+            const Icon = out.Icon;
+            return (
+              <div key={out.title} style={reveal(s(4), i * 80)}>
+                <div className="bg-white border border-[#EAE1D0] rounded-2xl flex items-center gap-2.5 px-3 py-2.5"
+                     style={{ boxShadow: "0 2px 14px rgba(42,39,85,0.07), 0 1px 3px rgba(42,39,85,0.05)" }}>
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                       style={{ background: "rgba(224,53,92,0.09)" }}>
+                    <Icon size={13} className="text-coral" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold text-navy leading-tight">{out.title}</div>
+                    <div className="text-[8px] leading-tight mt-0.5"
+                         style={{ color: "rgba(42,39,85,0.45)" }}>{out.desc}</div>
+                  </div>
+                  <div className="text-[7px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded-lg"
+                       style={{ color: CORAL, background: "rgba(224,53,92,0.08)",
+                                border: "1px solid rgba(224,53,92,0.2)" }}>
+                    OUT
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Learning loop label (stage 5) ── */}
+        <div className="absolute z-20 pointer-events-none"
+             style={{
+               bottom: "1.5%", left: "50%", transform: "translateX(-50%)",
+               opacity: s(5) ? 1 : 0,
+               transition: s(5) ? "opacity 0.5s ease 0.3s" : "opacity 0.2s ease",
+             }}>
+          <div className="flex items-center gap-2 rounded-full px-3.5 py-1.5 whitespace-nowrap"
+               style={{
+                 background: "rgba(245,239,227,0.96)",
+                 border: "1px solid rgba(23,162,160,0.35)",
+                 boxShadow: "0 2px 16px rgba(23,162,160,0.15)",
+               }}>
+            <RefreshCw size={9} style={{ color: TEAL, animation: "spin 3s linear infinite" }} className="flex-shrink-0" />
+            <div>
+              <div className="text-[8px] font-mono uppercase tracking-wider font-bold" style={{ color: TEAL }}>
+                Continuous Learning Loop
+              </div>
+              <div className="text-[7px]" style={{ color: "rgba(42,39,85,0.38)" }}>
+                Approve · Reject · Escalate → re-weights confidence scores
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Bottom hint ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-2 border-t border-[#E7DDCB]">
-        <div className="flex items-center gap-4 text-[8px] text-muted">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-coral" /> Live
+      {/* ── Bottom bar ── */}
+      <div className="flex-shrink-0 flex items-center justify-between px-6 py-2 border-t border-[#E7DDCB] bg-white/50">
+        <div className="flex items-center gap-4 text-[8px]" style={{ color: "rgba(42,39,85,0.45)" }}>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-coral" /> Live capability
           </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full border border-coral" /> Reserved
+          <span className="flex items-center gap-1.5 transition-opacity duration-500"
+                style={{ opacity: s(5) ? 1 : 0, color: TEAL }}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: TEAL }} /> Learning loop active
           </span>
         </div>
         {stage === 0 ? (
@@ -285,99 +403,15 @@ export default function ArchitecturePage() {
             Press SPACE to begin
           </span>
         ) : stage >= TOTAL_STAGES ? (
-          <span className="text-[9px] font-mono uppercase tracking-widest text-teal">
+          <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: TEAL }}>
             Complete · SPACE to restart · ESC to exit
           </span>
         ) : (
-          <span className="text-[9px] font-mono text-navy/30 uppercase tracking-widest">
+          <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "rgba(42,39,85,0.3)" }}>
             SPACE for next · {stage}/{TOTAL_STAGES}
           </span>
         )}
       </div>
     </div>
-  );
-}
-
-// ── Arrow SVG layer ─────────────────────────────────────────────────────────
-//
-// viewBox="0 0 100 100" preserveAspectRatio="none" (percentage-based coordinates)
-//
-// Baseline layout proportions:
-//   Data sources center:  y ≈ 6,  x: 12 | 37 | 63 | 88
-//   Agent tops:           y ≈ 13
-//   Agent centers:        y ≈ 40,  x: 14 | 50 | 86
-//   Agent bottoms:        y ≈ 65
-//   Decision Engine:      y: 66–79, center 72, x: 10–90
-//   Outputs center:       y ≈ 88,  x: 10 | 27 | 50 | 73 | 90
-//   Learning loop:        right-edge sweep from y=90 up to y=13
-
-function ArrowLayer({ stage }: { stage: number }) {
-  const s = (n: number) => stage >= n;
-
-  const pc = (visible: boolean) =>
-    `fill-none transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`;
-
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      style={{ overflow: "visible" }}
-    >
-      <defs>
-        {/* Flowing dash animation scoped to this SVG */}
-        <style>{`
-          .fp  { stroke-dasharray: 0.8 0.8; animation: fpdash 0.7s linear infinite; }
-          .fpt { stroke-dasharray: 0.8 1.2; animation: fpdash 1.1s linear infinite; }
-          @keyframes fpdash { to { stroke-dashoffset: -1.6; } }
-        `}</style>
-      </defs>
-
-      {/* ── Stage 3: Data Sources → Agents ── */}
-      <path d="M 12 7 C 12 10 13 12 14 13"
-        className={`${pc(s(3))} stroke-coral/55 fp`} strokeWidth="0.3" />
-      <path d="M 37 7 C 37 10 45 11 50 13"
-        className={`${pc(s(3))} stroke-coral/55 fp`} strokeWidth="0.3" />
-      <path d="M 63 7 C 63 10 55 11 50 13"
-        className={`${pc(s(3))} stroke-coral/55 fp`} strokeWidth="0.3" />
-      <path d="M 88 7 C 88 10 87 11 86 13"
-        className={`${pc(s(3))} stroke-coral/55 fp`} strokeWidth="0.3" />
-
-      {/* ── Stage 3: Inter-agent bus (hidden at stage 4+) ── */}
-      {/* Horizontal bus below agents */}
-      <line x1="14" y1="66" x2="86" y2="66"
-        className={`${pc(s(3) && !s(4))} stroke-coral/30 fp`} strokeWidth="0.22" />
-      {/* Short stubs from each agent */}
-      <line x1="14" y1="64" x2="14" y2="66"
-        className={`${pc(s(3) && !s(4))} stroke-coral/30 fp`} strokeWidth="0.22" />
-      <line x1="50" y1="64" x2="50" y2="66"
-        className={`${pc(s(3) && !s(4))} stroke-coral/30 fp`} strokeWidth="0.22" />
-      <line x1="86" y1="64" x2="86" y2="66"
-        className={`${pc(s(3) && !s(4))} stroke-coral/30 fp`} strokeWidth="0.22" />
-
-      {/* ── Stage 4: Agents → Decision Engine ── */}
-      <path d="M 14 65 C 14 70 28 71 30 72"
-        className={`${pc(s(4))} stroke-coral/65 fp`} strokeWidth="0.32" />
-      <path d="M 50 65 L 50 72"
-        className={`${pc(s(4))} stroke-coral/65 fp`} strokeWidth="0.32" />
-      <path d="M 86 65 C 86 70 72 71 70 72"
-        className={`${pc(s(4))} stroke-coral/65 fp`} strokeWidth="0.32" />
-
-      {/* ── Stage 5: Decision Engine → Outputs ── */}
-      <path d="M 20 80 C 20 84 10 86 10 88"
-        className={`${pc(s(5))} stroke-coral/55 fp`} strokeWidth="0.28" />
-      <path d="M 34 80 C 34 84 27 86 27 88"
-        className={`${pc(s(5))} stroke-coral/55 fp`} strokeWidth="0.28" />
-      <path d="M 50 80 L 50 88"
-        className={`${pc(s(5))} stroke-coral/55 fp`} strokeWidth="0.28" />
-      <path d="M 66 80 C 66 84 73 86 73 88"
-        className={`${pc(s(5))} stroke-coral/55 fp`} strokeWidth="0.28" />
-      <path d="M 80 80 C 80 84 90 86 90 88"
-        className={`${pc(s(5))} stroke-coral/55 fp`} strokeWidth="0.28" />
-
-      {/* ── Stage 5: Learning Loop — sweeps up the right edge ── */}
-      <path d="M 96 90 C 101 90 101 52 101 40 C 101 20 101 13 96 13"
-        className={`${pc(s(5))} stroke-teal/60 fpt`} strokeWidth="0.45" />
-    </svg>
   );
 }
