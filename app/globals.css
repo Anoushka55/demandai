@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap");
+
+:root {
+  --cream: #F5EBDD;
+  --navy: #2A2755;
+  --coral: #E0355C;
+  --teal: #17A2A0;
+  --success: #2E8B57;
+  --warning: #E8A33D;
+  --critical: #D64545;
+  --info: #2F6FED;
+}
+
+html, body {
+  background: var(--cream);
+  color: var(--navy);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(42, 39, 85, 0.2);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(42, 39, 85, 0.35);
+}
+
+/* Animated flow path for architecture diagram */
+.flow-path {
+  stroke-dasharray: 6 6;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.flow-particle {
+  animation: flowParticle 2.5s linear infinite;
+}
+
+@keyframes flowParticle {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
