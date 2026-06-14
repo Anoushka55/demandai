@@ -275,26 +275,31 @@ function ExceptionDetail({ record, onDecision, onClose, allData }: {
 
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const [decisionPending, setDecisionPending] = useState<"Closed" | "Escalated" | null>(null);
+  const [showEscalateForm, setShowEscalateForm] = useState(false);
 
   const reasonOptions = REASON_OPTIONS[record.root_cause_tag] ?? FALLBACK_REASONS;
+  const isAutoClose = record.approval_tier === "Auto-Close";
 
-  const selectDecision = (d: "Closed" | "Escalated") => {
-    setDecisionPending(d);
+  const handleAutoResolve = () => {
+    onDecision(record, "Closed", "Planner approved agent's recommendation");
+  };
+
+  const openEscalateForm = () => {
+    setShowEscalateForm(true);
     setSelectedReason(null);
     setNotes("");
   };
 
-  const cancelDecision = () => {
-    setDecisionPending(null);
+  const cancelEscalate = () => {
+    setShowEscalateForm(false);
     setSelectedReason(null);
     setNotes("");
   };
 
-  const submit = () => {
-    if (!decisionPending || !selectedReason) return;
+  const submitEscalate = () => {
+    if (!selectedReason) return;
     const combined = notes.trim() ? `${selectedReason} — ${notes.trim()}` : selectedReason;
-    onDecision(record, decisionPending, combined);
+    onDecision(record, "Escalated", combined);
   };
 
   if (!ready) {
@@ -377,7 +382,7 @@ function ExceptionDetail({ record, onDecision, onClose, allData }: {
             )}
         </div>
 
-        {/* Recommended action + decision */}
+        {/* Recommended action */}
         <div className="bg-white rounded-lg border-2 border-coral p-4 lg:col-span-1">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={16} className="text-coral" />
@@ -389,77 +394,93 @@ function ExceptionDetail({ record, onDecision, onClose, allData }: {
           </div>
         </div>
 
-        {/* Decision panel */}
-        <div className="bg-white rounded-lg border border-[#E7DDCB] p-4 lg:col-span-3">
-          <h4 className="text-sm font-bold text-navy mb-3">Take Action</h4>
-          <div className="grid lg:grid-cols-3 gap-3 mb-4">
-            <button
-              onClick={() => selectDecision("Closed")}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${decisionPending === "Closed" ? "border-success bg-success/5" : "border-[#E7DDCB] hover:border-success/40"}`}
-            >
-              <div className="text-sm font-bold text-navy mb-1">Auto-Resolve</div>
-              <div className="text-[11px] text-muted">Approve the agent's recommendation and close the exception.</div>
-            </button>
-            <button
-              onClick={() => selectDecision("Escalated")}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${decisionPending === "Escalated" ? "border-warning bg-warning/5" : "border-[#E7DDCB] hover:border-warning/40"}`}
-            >
-              <div className="text-sm font-bold text-navy mb-1">Escalate to Human</div>
-              <div className="text-[11px] text-muted">Route to next approval tier for review.</div>
-            </button>
+        {/* ── Bottom panel: Auto-Close → read-only card; else → Take Action ── */}
+        {isAutoClose ? (
+          /* Read-only "Action Taken" card for Auto-Close exceptions */
+          <div className="bg-white rounded-lg border border-[#E7DDCB] p-4 lg:col-span-3">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle2 size={16} className="text-success" />
+              <h4 className="text-sm font-bold text-navy">Action Taken — Auto-Resolved by Agent</h4>
+            </div>
+            <p className="text-sm text-navy leading-relaxed mb-3">{record.recommended_action}</p>
+            <div className="bg-success/5 border border-success/20 rounded-lg px-3 py-2.5 text-xs text-navy/75 leading-relaxed">
+              This exception was automatically resolved based on the agent&apos;s confidence score ({record.rca_confidence_pct}%) and low financial impact ({formatINR(record.financial_impact_inr)}). No planner action required.
+            </div>
           </div>
+        ) : (
+          /* Take Action panel for L1, L2, Director tiers */
+          <div className="bg-white rounded-lg border border-[#E7DDCB] p-4 lg:col-span-3">
+            <h4 className="text-sm font-bold text-navy mb-3">Take Action</h4>
 
-          {decisionPending && (
-            <div className="space-y-4">
-              {/* Reason radio options */}
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Reason (required)</div>
-                <div className="space-y-1.5">
-                  {reasonOptions.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setSelectedReason(opt)}
-                      className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm transition-all ${
-                        selectedReason === opt
-                          ? "border-coral bg-coral/5 text-navy font-semibold"
-                          : "border-[#E7DDCB] text-navy/80 hover:border-coral/40 hover:bg-cream"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                          selectedReason === opt ? "border-coral bg-coral" : "border-[#C4B9A8]"
-                        }`}>
-                          {selectedReason === opt && <span className="w-1.5 h-1.5 rounded-full bg-white block" />}
-                        </span>
-                        {opt}
-                      </div>
-                    </button>
-                  ))}
+            {!showEscalateForm ? (
+              /* Two-button choice */
+              <div className="grid lg:grid-cols-3 gap-3">
+                <button
+                  onClick={handleAutoResolve}
+                  className="p-3 rounded-lg border-2 text-left transition-all border-[#E7DDCB] hover:border-success/50 hover:bg-success/5"
+                >
+                  <div className="text-sm font-bold text-navy mb-1">Auto-Resolve</div>
+                  <div className="text-[11px] text-muted">Approve the agent&apos;s recommendation and close the exception immediately.</div>
+                </button>
+                <button
+                  onClick={openEscalateForm}
+                  className="p-3 rounded-lg border-2 text-left transition-all border-[#E7DDCB] hover:border-warning/50 hover:bg-warning/5"
+                >
+                  <div className="text-sm font-bold text-navy mb-1">Escalate to Human</div>
+                  <div className="text-[11px] text-muted">Route to next approval tier for review. Requires a reason.</div>
+                </button>
+              </div>
+            ) : (
+              /* Escalate form — reason radios + notes */
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Reason (required)</div>
+                  <div className="space-y-1.5">
+                    {reasonOptions.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setSelectedReason(opt)}
+                        className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm transition-all ${
+                          selectedReason === opt
+                            ? "border-coral bg-coral/5 text-navy font-semibold"
+                            : "border-[#E7DDCB] text-navy/80 hover:border-coral/40 hover:bg-cream"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                            selectedReason === opt ? "border-coral bg-coral" : "border-[#C4B9A8]"
+                          }`}>
+                            {selectedReason === opt && <span className="w-1.5 h-1.5 rounded-full bg-white block" />}
+                          </span>
+                          {opt}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
+                    Additional notes (optional)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add context or observations..."
+                    rows={2}
+                    className="w-full px-3 py-2 bg-cream border border-[#E7DDCB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-coral/30 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" size="sm" onClick={cancelEscalate}>Cancel</Button>
+                  <Button variant="primary" size="sm" onClick={submitEscalate} disabled={!selectedReason}>Submit decision</Button>
                 </div>
               </div>
-
-              {/* Optional notes */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
-                  Additional notes (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add context or observations..."
-                  rows={2}
-                  className="w-full px-3 py-2 bg-cream border border-[#E7DDCB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-coral/30 resize-none"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={cancelDecision}>Cancel</Button>
-                <Button variant="primary" size="sm" onClick={submit} disabled={!selectedReason}>Submit decision</Button>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

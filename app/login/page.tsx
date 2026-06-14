@@ -8,7 +8,7 @@ import { Brain, Sparkles } from "lucide-react";
 export default function LoginPage() {
   const { name, setName, isReady } = useUser();
   const router = useRouter();
-  const [input, setInput] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (isReady && name) router.replace("/");
@@ -16,8 +16,7 @@ export default function LoginPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    setName(input.trim());
+    setName("Anoushka");
     router.replace("/");
   };
 
@@ -35,42 +34,41 @@ export default function LoginPage() {
           <p className="text-sm text-muted mt-1">Autonomous Demand Planning Agent</p>
         </div>
 
-        <form onSubmit={submit} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(42,39,85,0.08)] border border-[#E7DDCB] p-6 space-y-5">
+        <form
+          onSubmit={submit}
+          className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(42,39,85,0.08)] border border-[#E7DDCB] p-6 space-y-4"
+        >
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">
-              Your name
+              Email
             </label>
             <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter your name"
-              required
-              autoFocus
+              type="email"
+              value="anoushka@demandplanner.com"
+              readOnly
+              className="w-full px-4 py-2.5 bg-cream border border-[#E7DDCB] rounded-lg text-sm text-navy focus:outline-none cursor-default"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onFocus={() => setPassword("demandiq2026")}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               className="w-full px-4 py-2.5 bg-white border border-[#E7DDCB] rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-coral/30 focus:border-coral"
             />
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">
-              Role
-            </label>
-            <input
-              type="text"
-              value="Demand & Supply Planner"
-              disabled
-              className="w-full px-4 py-2.5 bg-cream border border-[#E7DDCB] rounded-lg text-sm text-muted cursor-not-allowed"
-            />
+          <div className="pt-1">
+            <Button type="submit" variant="primary" size="lg" className="w-full">
+              Sign in
+            </Button>
           </div>
-
-          <Button type="submit" variant="primary" size="lg" className="w-full">
-            Sign in
-          </Button>
-
-          <p className="text-[11px] text-center text-muted leading-relaxed">
-            This is a demo environment. No authentication is performed —
-            your name is stored locally only.
-          </p>
         </form>
       </div>
     </div>

@@ -29,7 +29,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ name, role: "Demand & Supply Planner", setName, isReady }}>
+    <UserContext.Provider value={{ name, role: "Demand Planner", setName, isReady }}>
       {children}
     </UserContext.Provider>
   );

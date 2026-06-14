@@ -2,15 +2,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { Card, CardHeader } from "@/components/Card";
 import { Badge } from "@/components/Badge";
-import { Button } from "@/components/Button";
 import { AgentInsightCard } from "@/components/AgentInsightCard";
 import {
   Users,
   GitMerge,
   ChevronDown,
   ChevronRight,
-  CheckCircle2,
-  Bell,
   CalendarDays,
   TrendingUp,
   TrendingDown,
@@ -20,9 +17,16 @@ import {
   getCollabSummary,
   computeConsensusForecast,
   CollabRecord,
+  SUBMISSION_DEADLINE,
 } from "@/lib/forecastCollabData";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${parseInt(d, 10)} ${MONTHS[parseInt(m, 10) - 1]} ${y}`;
+}
 
 function AdjBadge({ pct }: { pct: number }) {
   if (pct === 0)
@@ -55,7 +59,6 @@ function StatusBadge({ status }: { status: CollabRecord["submission_status"] }) 
 
 export default function ForecastCollabPage() {
   const [expandedOwner, setExpandedOwner] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const summary = useMemo(() => getCollabSummary(), []);
   const consensus = useMemo(() => computeConsensusForecast(), []);
@@ -66,6 +69,7 @@ export default function ForecastCollabPage() {
   const totalOwners = summary.length;
   const completeOwners = summary.filter((s) => s.status === "Complete").length;
   const pendingOwners = summary.filter((s) => s.status === "In Progress");
+  const autoReminderCount = summary.filter((s) => s.reminder_sent).length;
 
   const overallAvgAdj =
     Math.round(
@@ -76,15 +80,21 @@ export default function ForecastCollabPage() {
     (r) => r.adjusted_forecast_qty !== null && r.adjusted_forecast_qty !== r.stat_forecast_qty
   ).length;
 
-  // ── handlers ───────────────────────────────────────────────────────────────
-  const sendReminder = (ownerName: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setToast(`Reminder sent to ${ownerName}`);
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const toggle = (owner: string) =>
     setExpandedOwner((prev) => (prev === owner ? null : owner));
+
+  // ── agent insight text ─────────────────────────────────────────────────────
+  const insightText = (() => {
+    if (completeOwners === totalOwners) {
+      return `All ${totalOwners} brand owners have submitted. Consensus forecast is ready — ${adjustedConsensusCount} SKUs carry owner adjustments vs. the statistical baseline.`;
+    }
+    const pendingNames = pendingOwners.map((o) => o.owner_name).join(", ");
+    const reminderClause =
+      autoReminderCount > 0
+        ? ` The agent has automatically sent reminders to ${autoReminderCount} owner${autoReminderCount > 1 ? "s" : ""} ahead of the ${fmtDate(SUBMISSION_DEADLINE)} deadline.`
+        : "";
+    return `${completeOwners} of ${totalOwners} brand owners have completed submissions (${submittedSkus}/${totalSkus} SKUs). Pending: ${pendingNames}.${reminderClause}`;
+  })();
 
   return (
     <div className="space-y-6">
@@ -102,11 +112,7 @@ export default function ForecastCollabPage() {
       {/* ── agent insight ── */}
       <AgentInsightCard
         sentiment={completeOwners === totalOwners ? "positive" : "neutral"}
-        text={
-          completeOwners === totalOwners
-            ? `All ${totalOwners} brand owners have submitted. Consensus forecast is ready — ${adjustedConsensusCount} SKUs carry owner adjustments vs. the statistical baseline.`
-            : `${completeOwners} of ${totalOwners} brand owners have completed submissions (${submittedSkus}/${totalSkus} SKUs). Pending: ${pendingOwners.map((o) => o.owner_name).join(", ")}. Use the Send Reminder button to chase outstanding inputs.`
-        }
+        text={insightText}
       />
 
       {/* ── summary stat cards ── */}
@@ -198,14 +204,14 @@ export default function ForecastCollabPage() {
                 <th className="font-bold pb-2.5 pr-4 text-right">Submitted</th>
                 <th className="font-bold pb-2.5 pr-4 text-right">Avg Adj %</th>
                 <th className="font-bold pb-2.5 pr-4">Status</th>
-                <th className="font-bold pb-2.5 text-right"></th>
+                <th className="font-bold pb-2.5 pr-4">Deadline</th>
+                <th className="font-bold pb-2.5">Reminder</th>
               </tr>
             </thead>
             <tbody>
               {summary.map((row) => {
                 const ownerSkus = collabRecords.filter((r) => r.owner_name === row.owner_name);
                 const isExpanded = expandedOwner === row.owner_name;
-                const hasPending = row.status === "In Progress";
 
                 return (
                   <Fragment key={row.owner_name}>
@@ -239,16 +245,18 @@ export default function ForecastCollabPage() {
                           {row.status}
                         </Badge>
                       </td>
-                      <td className="text-right">
-                        {hasPending && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => sendReminder(row.owner_name, e)}
-                          >
-                            <Bell size={12} />
-                            Send Reminder
-                          </Button>
+                      <td className="pr-4 text-xs text-navy/65 whitespace-nowrap">
+                        {fmtDate(row.deadline)}
+                      </td>
+                      <td>
+                        {row.status === "Complete" ? (
+                          <span className="text-xs text-muted">—</span>
+                        ) : row.reminder_sent ? (
+                          <Badge variant="info">
+                            Auto-sent {fmtDate(row.reminder_sent_date!)}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted">—</span>
                         )}
                       </td>
                     </tr>
@@ -256,7 +264,7 @@ export default function ForecastCollabPage() {
                     {/* expanded SKU detail rows */}
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} className="pb-3 pt-0 px-0">
+                        <td colSpan={8} className="pb-3 pt-0 px-0">
                           <div className="mx-6 rounded-xl border border-[#E7DDCB] overflow-hidden bg-cream/50">
                             <table className="w-full text-xs">
                               <thead>
@@ -379,14 +387,6 @@ export default function ForecastCollabPage() {
           submitted.
         </p>
       </Card>
-
-      {/* ── toast ── */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-navy text-white px-5 py-3 rounded-lg shadow-2xl flex items-center gap-2 text-sm">
-          <CheckCircle2 size={18} className="text-success" />
-          {toast}
-        </div>
-      )}
     </div>
   );
 }
